@@ -1,57 +1,41 @@
-import json, time
 from localconfig import *
+
+import json, os, time
+from pathlib import Path
+from pprint import pprint
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains 
 
-def scroll_down(driver):
-    """A method for scrolling the page."""
+OUTPUT_PATH = "output"
+OUTPUT_FILE_IDS = "dm_ids.json"
 
-    # Get scroll height.
-    last_height = driver.execute_script("return document.body.scrollHeight")
+def get_dm_ids():
+    """Parse the dm_ids dict file from the output folder if it exists, otherwise create the folder and return an empty dict."""
+    dm_ids = {}
 
-    while True:
+    output_folder = Path(OUTPUT_PATH)
 
-        # Scroll down to the bottom.
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    if not output_folder.exists():
+        os.mkdir(output_folder)
 
-        # Wait to load the page.
-        time.sleep(2)
+    dm_ids_file = output_folder / OUTPUT_FILE_IDS
+    if dm_ids_file.exists():
+        with open(dm_ids_file) as file:
+            dm_ids = json.load(file)
 
-        # Calculate new scroll height and compare with last scroll height.
-        new_height = driver.execute_script("return document.body.scrollHeight")
+    return dm_ids
 
-        if new_height == last_height:
+def scrape_dm_pages(dm_ids):
+    """Navigate to each page in the dm_ids dictionary and scrape all messages."""
 
-            break
+    pass
 
-        last_height = new_height
 
-def wheel_element(element, deltaY = 120, offsetX = 0, offsetY = 0):
-  error = element._parent.execute_script("""
-    var element = arguments[0];
-    var deltaY = arguments[1];
-    var box = element.getBoundingClientRect();
-    var clientX = box.left + (arguments[2] || box.width / 2);
-    var clientY = box.top + (arguments[3] || box.height / 2);
-    var target = element.ownerDocument.elementFromPoint(clientX, clientY);
+#-----------------------------------------------------
 
-    for (var e = target; e; e = e.parentElement) {
-      if (e === element) {
-        target.dispatchEvent(new MouseEvent('mouseover', {view: window, bubbles: true, cancelable: true, clientX: clientX, clientY: clientY}));
-        target.dispatchEvent(new MouseEvent('mousemove', {view: window, bubbles: true, cancelable: true, clientX: clientX, clientY: clientY}));
-        target.dispatchEvent(new WheelEvent('wheel',     {view: window, bubbles: true, cancelable: true, clientX: clientX, clientY: clientY, deltaY: deltaY}));
-        return;
-      }
-    }    
-    return "Element is not interactable";
-    """, element, deltaY, offsetX, offsetY)
-  if error:
-    time.sleep(1)
-    print("Waiting")
-    #raise WebDriverException(error)
-
+# First see if we've already got our dm ids
 should_open_new_browser = True
 
 if (should_open_new_browser):
@@ -70,10 +54,13 @@ else:
     driver.close()
     driver.session_id = session_id
 
-
 input("Press Enter to continue...")
 
-dm_ids = {}
+dm_ids = get_dm_ids()
+if (len(dm_ids) > 0):
+    scrape_dm_pages(dm_ids)
+
+raise Exception("Stop here for now.")
 
 # Delete sidebar to limit amount of elements we search.
 sidebar = driver.find_elements_by_class_name("c-virtual_list__scroll_container")[0]
@@ -127,7 +114,8 @@ while len(list_items) > 0:
 json_object = json.dumps(dm_ids, indent = 4) 
   
 # Writing to sample.json 
-with open("dm_ids.json", "w") as outfile: 
+filename = Path(OUTPUT_PATH) / OUTPUT_FILE_IDS
+with open(filename, "w") as outfile: 
     outfile.write(json_object) 
 
     """ Abandon -- Iterating through the list while deleting/reloading too complex
